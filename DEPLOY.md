@@ -1,6 +1,6 @@
 # Deploying email-summarizer
 
-The deploy procedure lives in `scripts/deploy.sh` (executable runbook); this file is the narrative around it: prereqs, rollback, and *why* each post-deploy check exists. If the steps and this doc ever disagree, the script wins. It follows the `~/dev` deploy convention (`DEPLOY.md` + `scripts/deploy.sh` + `scripts/postdeploy-check.sh`); `sms-hero` is the reference implementation.
+The deploy procedure lives in `scripts/deploy.sh` (executable runbook); this file is the narrative around it: prereqs, rollback, and *why* each post-deploy check exists. If the steps and this doc ever disagree, the script wins. It follows the `~/dev` deploy convention (`DEPLOY.md` + `scripts/deploy.sh` + `deploy.json`, run by the shared `devops` kit); `sms-hero` is the reference implementation.
 
 ## What deploys where
 
@@ -21,7 +21,7 @@ scripts/deploy.sh            # deploy the worker, then verify
 scripts/deploy.sh check      # skip deploy, just run the post-deploy check
 ```
 
-The script ends by running `scripts/postdeploy-check.sh`. The deploy is **not done** until that passes.
+The script ends by running `devops check` (against `deploy.json`). The deploy is **not done** until that passes.
 
 ## Prereqs
 
@@ -30,15 +30,16 @@ The script ends by running `scripts/postdeploy-check.sh`. The deploy is **not do
 
 ## Post-deploy checks (and why each exists)
 
-`scripts/postdeploy-check.sh` runs three read-only assertions and exits non-zero if any fail. None of them spends an OpenAI call or needs a secret.
+The checks are declared in **`deploy.json`** (the standard descriptor) and run by the shared deploy kit: `devops check`. The gating logic lives once in `~/dev/ops`, not in this repo. None of the checks spends an OpenAI call or needs a secret.
 
-1. **`GET /` returns 200.** The worker is deployed and reachable at the edge. A dependency-free liveness check.
-2. **`GET /` identifies as `email-reader`, and an unauthenticated `POST /` returns 401.** This is the "real worker, not a fallback" check. A blank route, a 404 placeholder, or a half-broken deploy would not both report `service:"email-reader"` on GET and enforce the auth boundary on POST. The 401 proves the request-handling logic actually shipped (the worker reached `authorize()` and rejected), without spending an OpenAI call or the shared token. A `200` or a `500` on the unauthenticated POST would mean the auth gate is gone or the worker is erroring before it.
-3. **The deployed version equals the version in this repo (freshness invariant).** `GET /` reports a `version` string sourced from `src/worker.ts`. The check reads that same string from the working tree and asserts the live worker reports it. A mismatch means the worker serving this route is NOT the code you just built: a failed/no-op `wrangler deploy`, a stale worker on the route, or the wrong Cloudflare account. This is the email-summarizer analog of sms-hero's single-backend invariant: assert that the thing serving traffic is the thing you just shipped. (For the check to catch a regression, bump the `version` string in `src/worker.ts` when a deploy changes behavior.)
+1. **`alive`: `GET /` returns 200.** The worker is deployed and reachable at the edge. A dependency-free liveness check.
+2. **`identity`: `GET /` is 200 and contains `"service":"email-reader"`.** Proves the right worker is serving this route, not a blank/placeholder.
+3. **`auth-boundary`: an unauthenticated `POST /` returns 401.** The "real worker, not a fallback" check: the worker reached `authorize()` and rejected, so the request-handling logic actually shipped. A `200` or `500` would mean the auth gate is gone or the worker erroring before it.
+4. **`version-fresh` (hook, `scripts/checks/version.sh`): the deployed `version` equals `src/worker.ts`.** A freshness invariant the HTTP assertions cannot express, so it lives as an escape-hatch hook. A mismatch means the worker serving this route is NOT the code you just built (failed/no-op deploy, stale worker, wrong Cloudflare account). Bump the `version` string in `src/worker.ts` on a behavioral deploy so this catches a regression.
 
 ## Rollback
 
-- `npx wrangler rollback` reverts to the previous worker version, or redeploy the previous commit. Re-run `scripts/postdeploy-check.sh` to confirm. The worker is stateless, so a rollback is safe and immediate.
+- `npx wrangler rollback` reverts to the previous worker version, or redeploy the previous commit. Re-run `devops check` to confirm. The worker is stateless, so a rollback is safe and immediate.
 
 ## Gotchas
 

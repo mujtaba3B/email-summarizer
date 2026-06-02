@@ -6,7 +6,7 @@
 # procedure; DEPLOY.md is the narrative around it (prereqs, rollback, why the
 # checks exist). It is a thin, ordered wrapper over the documented command so
 # the steps cannot drift from reality. It ends by running
-# scripts/postdeploy-check.sh: the deploy is not "done" until that passes.
+# devops check (against deploy.json): the deploy is not "done" until it passes.
 #
 # Usage:
 #   scripts/deploy.sh            # deploy the worker, then verify
@@ -35,6 +35,8 @@ case "$TARGET" in
 esac
 
 step "Post-deploy check (gates the deploy)"
-"$REPO_ROOT/scripts/postdeploy-check.sh"
+# Checks are declared in deploy.json and run by the shared deploy kit (devops);
+# the gating logic lives once in ~/dev/ops, not in this repo. See DEPLOY.md.
+( cd "$REPO_ROOT" && devops check )
 
 step "Deploy complete and verified"

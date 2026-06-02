@@ -1,0 +1,13 @@
+{
+  "id": "email-summarizer",
+  "label": "Email Summarizer",
+  "host": "cloudflare",
+  "public_url": "https://email-reader.mujtaba-badat.workers.dev",
+  "covers": ["email-reader"],
+  "checks": [
+    { "name": "alive",         "http": { "url": "https://email-reader.mujtaba-badat.workers.dev/", "status": 200 } },
+    { "name": "identity",      "http": { "url": "https://email-reader.mujtaba-badat.workers.dev/", "status": 200, "body_has": ["\"service\":\"email-reader\""] } },
+    { "name": "auth-boundary", "http": { "method": "POST", "url": "https://email-reader.mujtaba-badat.workers.dev/", "status": 401, "data": "{\"links\":[],\"readingTime\":5}" } },
+    { "name": "version-fresh", "hook": { "script": "scripts/checks/version.sh" } }
+  ]
+}
