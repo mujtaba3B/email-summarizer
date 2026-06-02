@@ -61,8 +61,10 @@ fi
 # route is NOT the code we just built: a failed/no-op deploy, a stale worker, or
 # the wrong Cloudflare account. (Bump the version in src/worker.ts on behavioral
 # deploys so this catches a regression rather than always matching.)
-repo_version="$(grep -oE 'version[":[:space:]]+"[0-9][^"]*"' "${REPO_ROOT}/src/worker.ts" 2>/dev/null \
-  | grep -oE '[0-9][^"]*' | head -1 || true)"
+# Anchor on an object-key position ({ or , then optional space then version:)
+# so a bare-word `version` substring (apiversion:, schemaversion:) can't match.
+repo_version="$(grep -oE '[{,][[:space:]]*version:[[:space:]]*"[0-9][^"]*"' "${REPO_ROOT}/src/worker.ts" 2>/dev/null \
+  | grep -oE '"[0-9][^"]*"' | tr -d '"' | head -1 || true)"
 live_version="$(printf '%s' "$get_body" | grep -oE '"version":"[^"]*"' | head -1 | grep -oE '[0-9][^"]*' || true)"
 if [ -z "$repo_version" ]; then
   fail "could not read a version string from src/worker.ts (check 3 cannot run)"
