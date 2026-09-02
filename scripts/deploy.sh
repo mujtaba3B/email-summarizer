@@ -36,7 +36,7 @@ esac
 
 step "Post-deploy check (gates the deploy)"
 # Checks are declared in deploy.json and run by the shared deploy kit (devops);
-# the gating logic lives once in ~/dev/ops, not in this repo. See DEPLOY.md.
+# the gating logic lives once in ~/dev/infra/ops, not in this repo. See DEPLOY.md.
 ( cd "$REPO_ROOT" && devops check )
 
 step "Deploy complete and verified"

@@ -30,7 +30,7 @@ The script ends by running `devops check` (against `deploy.json`). The deploy is
 
 ## Post-deploy checks (and why each exists)
 
-The checks are declared in **`deploy.json`** (the standard descriptor) and run by the shared deploy kit: `devops check`. The gating logic lives once in `~/dev/ops`, not in this repo. None of the checks spends an OpenAI call or needs a secret.
+The checks are declared in **`deploy.json`** (the standard descriptor) and run by the shared deploy kit: `devops check`. The gating logic lives once in `~/dev/infra/ops`, not in this repo. None of the checks spends an OpenAI call or needs a secret.
 
 1. **`alive`: `GET /` returns 200.** The worker is deployed and reachable at the edge. A dependency-free liveness check.
 2. **`identity`: `GET /` is 200 and contains `"service":"email-reader"`.** Proves the right worker is serving this route, not a blank/placeholder.
